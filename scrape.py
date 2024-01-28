@@ -4,7 +4,7 @@ from datetime import datetime
 
 # cli args
 parser = argparse.ArgumentParser(prog='Foundation IPFS Scraper' ,description="Extracts IPFS CIDs from artwork on Foundation.app", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-v", "--version", action='version', version='%(prog)s 1.0')
+parser.add_argument("-v", "--version", action='version', version='%(prog)s 1.1')
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument("-b", "--batch", help="batch input file, one url per line")
 group.add_argument("-u", "--url", help="single url")
@@ -17,9 +17,9 @@ filepath = (args.input)
 
 try:
     with open(filepath) as i:
-        entries = json.load(i)
+        data = json.load(i)
 except FileNotFoundError:
-    entries = {}
+    data = []
 
 # url or batch input
 if args.url is not None:
@@ -33,21 +33,17 @@ for url in urls:
     page = requests.get(url)
     soup = BeautifulSoup(page.content, "html.parser")
     result = json.loads(soup.find(id="__NEXT_DATA__").get_text())
-    ident = (result['props']['pageProps']['artwork']['id'])
-    name = (result['props']['pageProps']['artwork']['name'])
-    media = os.path.split(os.path.split((result['props']['pageProps']['artwork']['assetIPFSPath']))[0])[1]
-    metadata = os.path.split(os.path.split((result['props']['pageProps']['artwork']['metadataIPFSPath']))[0])[1]
-    entryL2 = [{} for i in range(2)]
-    entryL2[0]['type'] = 'metadata'
-    entryL2[0]['cid'] = metadata
-    entryL2[1]['type'] = 'media'
-    entryL2[1]['cid'] = media
-    entries[(ident+' '+name)] = entryL2
+    if (result['props']['pageProps']['artwork']['assetIPFSPath']) is not None:
+        name = (result['props']['pageProps']['artwork']['name'])
+        media = os.path.split(os.path.split((result['props']['pageProps']['artwork']['assetIPFSPath']))[0])[1]
+        metadata = os.path.split(os.path.split((result['props']['pageProps']['artwork']['metadataIPFSPath']))[0])[1]
+        entry = {'name': name, 'metadata': metadata, 'media': media}
+        data.append(entry)
 
 # output
 try:
     with open(filepath, 'w') as f:
-        json.dump(entries, f, indent=4)
+        json.dump(data, f, indent=4)
 except FileNotFoundError:
     with open(timestamp+'-fnd.json', 'w') as f:
-        json.dump(entries, f, indent=4)
+        json.dump(data, f, indent=4)
